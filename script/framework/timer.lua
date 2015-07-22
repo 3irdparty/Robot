@@ -19,7 +19,7 @@ function schedule(name, delay, internal, cb)
 	}
 end
 
-function scheduleOnece(name, delay, cb)
+function scheduleOnce(name, delay, cb)
 	log("timer", name, delay, cb)
 	schedule(name, delay, 0, function()
 		cb()

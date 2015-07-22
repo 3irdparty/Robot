@@ -24,7 +24,8 @@ for i=1, G_CLIENT_NUM do
 	local sock = connectTo(G_SERVER_IP, G_SERVER_PORT, function(sock, success)
 		if sock and success then
 			sockCount = sockCount + 1
-			scheduleOnece("regist_" .. sock, 1, function()
+			--scheduleOnce("regist_" .. sock, 1, function()
+			schedule("regist_" .. sock, 2, 2, function()
 				local msg = 
 				{
 					msgMainId   = 3,

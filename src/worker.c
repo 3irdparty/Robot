@@ -169,7 +169,7 @@ static bool read_data(Worker *worker, Sock *sock)
 
         if(nread < WORKER_BUF_LEN)
         {
-            Log();
+            //Log();
             break;
         }
     }
