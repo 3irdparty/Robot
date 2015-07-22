@@ -92,6 +92,7 @@ end
 
 function traceback(msg)
     local msg = debug.traceback(msg, 3)
-    print(msg)
-    return msg
+    log("traceback", msg)
+    --return msg
 end
+

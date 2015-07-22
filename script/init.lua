@@ -21,12 +21,29 @@ uu.registHandlers("onMsg", "onTick", "onRemoveSock", "onConnected", "traceback")
 ---[[
 local sockCount = 0
 for i=1, G_CLIENT_NUM do
-	local sock = uu.connectTo(G_SERVER_IP, G_SERVER_PORT)
+	local sock = connectTo(G_SERVER_IP, G_SERVER_PORT, function(sock, success)
+		if sock and success then
+			sockCount = sockCount + 1
+			scheduleOnece("regist_" .. sock, 1, function()
+				local msg = 
+				{
+					msgMainId   = 3,
+			    	msgMinorId  = 1,
+			    	strAccount  = "gaofeng" .. sockCount,
+			    	strPassword = "222222",
+				}
+				local str = mp.pack(msg)
+			    sendMsg(sock, str)
+			end)
+		end
+		log("init", " on connected: ", sock, success)
+	end)
 
-	log("init", "sock: ", sock)
+	--log("init", "sock: ", sock)
+	--[[
 	if sock > 0 then
 		sockCount = sockCount + 1
-		scheduleOnece("regist_" .. sock, 5, function()
+		scheduleOnece("regist_" .. sock, 1, function()
 			local msg = 
 			{
 				msgMainId   = 3,
@@ -38,6 +55,7 @@ for i=1, G_CLIENT_NUM do
 		    sendMsg(sock, str)
 		end)
 	end
+	--]]
 end
 --]]
 

@@ -38,14 +38,14 @@ function timerTick()
 				timer.cb()
 				timer.active = true
 				timer.calledtimes = timer.calledtimes + 1
-				log("timer", name, " be activated, run times: ", timer.calledtimes)
+				--log("timer", name, " be activated, run times: ", timer.calledtimes)
 			end
 		else
 			if (currtime - timer.start) > timer.internal then
 				timer.start = currtime
 				timer.cb()
 				timer.calledtimes = timer.calledtimes + 1
-				log("timer", name, " run times: ", timer.calledtimes)
+				--log("timer", name, " run times: ", timer.calledtimes)
 			end
 		end
 		

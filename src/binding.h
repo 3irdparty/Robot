@@ -13,7 +13,7 @@ void init_lua_state(lua_State *state);
 void close_lua(lua_State *state);
 
 
-bool lua_on_connected(Worker *worker, Sock *sock);
+bool lua_on_connected(Worker *worker, Sock *sock, bool success);
 
 bool lua_tick(Worker *worker);
 

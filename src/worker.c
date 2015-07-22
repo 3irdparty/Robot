@@ -30,15 +30,6 @@ static inline bool handle_msg(SockMsg *msg)
 #endif    
 }
 
-static bool check_need_heart_beat(Worker *worker, time_t curr_time)
-{
-    if((curr_time - worker->last_heart_beat) > HEART_BEAT_TIME)
-    {
-        worker->last_heart_beat = curr_time;
-        return true;
-    }
-    return false;
-}
 
 static bool write_data(Sock *sock)
 {
@@ -115,15 +106,16 @@ static bool read_data(Worker *worker, Sock *sock)
     while(1)
     {
         nread = read(sock->fd, worker->buf, WORKER_BUF_LEN);
-
         //非阻塞，无数据，说明本次数据已经读完，返回下次再读
         if((nread < 0) && (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK))
         {
+            Log();
             goto Ok;
         }
         //对方关闭或其他意外，关闭清理sock
         else if(nread <= 0)
         {
+            Log();
             goto Error;
         }
 
@@ -142,10 +134,10 @@ static bool read_data(Worker *worker, Sock *sock)
                     sock->msg = create_recv_msg(sock);
                     if(!sock->msg)
                     {
+                        Log();
                         goto Error;
                     }
                     sock->len_total = sock->msg->len;
-                    
                     //已读长度置0
                     sock->len_readed = 0;
                 }
@@ -169,6 +161,7 @@ static bool read_data(Worker *worker, Sock *sock)
                 //处理过程中出错，关闭清理sock
                 if(!ret)
                 {
+                    Log();
                     goto Error;
                 }
             }
@@ -176,6 +169,7 @@ static bool read_data(Worker *worker, Sock *sock)
 
         if(nread < WORKER_BUF_LEN)
         {
+            Log();
             break;
         }
     }
@@ -278,6 +272,49 @@ Error:
 }
 #endif
 
+static inline void check_connector_state(Worker *worker)
+{
+    if(worker->max_connector_idx < 0)
+    {
+        return;
+    }
+    //printf("worker->max_connector_idx : %d\n", worker->max_connector_idx);
+
+    Sock *sock;
+    //int error;
+    struct sockaddr addr;
+    socklen_t len;
+    time_t curr_time = time(0);
+    for(int i = 0; i <= worker->max_connector_idx; i++)
+    {
+
+        sock = worker->connectors[i];
+        //getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &error, &len);
+        getpeername(sock->fd, &addr, &len);
+        //if(!getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &error, &len))
+        if(getpeername(sock->fd, &addr, &len) == 0)
+        {
+            remove_connector_from_worker(worker, sock);
+            add_client_to_worker(worker, sock);
+            lua_on_connected(worker, sock, true);
+            //printf("xx error: %d\n", error);
+        }
+        else
+        {
+            int err = errno;
+            //printf("err %d is: %s\n", err, strerror(err));
+
+            if((curr_time - sock->last_pack_time) >= CONNECT_TIME_OUT)
+            {
+                remove_connector_from_worker(worker, sock);
+                lua_on_connected(worker, sock, false);
+                remove_sock(sock);
+            }
+        }
+        
+    }
+}
+
 static void *worker_thread(void *arg) {
     Worker *worker = (Worker*)arg;
 
@@ -299,15 +336,15 @@ static void *worker_thread(void *arg) {
             int sockfd = events[i].data.fd;
             Sock *sock = g_sock_fd_map[sockfd];
             
-            
+            #if 0
             if(!sock->added)
             {
                 add_client_to_worker(worker, sock);
                 sock->added = true;
                 //lua_on_connected(worker, sock);
-                //epoll_ctl(sock->epoll_fd, EPOLL_CTL_DEL, sock->fd, 0);
             }
-                   
+            #endif                   
+
             if (events[i].events & EPOLLOUT)
             {
                 if (!write_data(sock))
@@ -317,9 +354,7 @@ static void *worker_thread(void *arg) {
                     remove_sock(sock);
                     continue;
                 }
-            }
-
-            
+            }           
 
             if (events[i].events & EPOLLIN)
             {
@@ -335,7 +370,7 @@ static void *worker_thread(void *arg) {
 
             if(!worker->running)
             {
-                break;
+                goto Stop;
             }
 
             event.events = EPOLLIN | EPOLLONESHOT;
@@ -347,10 +382,11 @@ static void *worker_thread(void *arg) {
             event.data.fd = sockfd;
             epoll_ctl(epfd, EPOLL_CTL_MOD, sockfd, &event);
         }
-
+        check_connector_state(worker);
         lua_tick(worker);
     }
     
+Stop:
     close(epfd);   
 
     return 0;
@@ -364,6 +400,7 @@ static void *create_worker(int epfd, int idx)
     worker->last_heart_beat = time(0);
     worker->running = true;
     worker->max_client_idx = -1;
+    worker->max_connector_idx = -1;
 
     worker->state = open_lua();
     init_lua_state(worker->state);
@@ -382,6 +419,13 @@ void add_client_to_worker(Worker *worker, Sock *sock)
     worker->max_client_idx += 1;
     sock->worker_idx = worker->max_client_idx;
     worker->clients[worker->max_client_idx] = sock;
+    sock->added = true;
+
+    struct epoll_event event;
+    event.data.fd = sock->fd;
+    event.events = EPOLLIN | EPOLLONESHOT;
+
+    epoll_ctl(worker->epfd, EPOLL_CTL_ADD, sock->fd, &event);
 }
 
 void remove_client_from_worker(Worker *worker, Sock *sock)
@@ -402,23 +446,24 @@ void remove_client_from_worker(Worker *worker, Sock *sock)
 
 void add_connector_to_worker(Worker *worker, Sock *sock)
 {
-    worker->max_client_idx += 1;
-    sock->worker_idx = worker->max_client_idx;
-    worker->clients[worker->max_client_idx] = sock;
+    worker->max_connector_idx += 1;
+    sock->worker_idx = worker->max_connector_idx;
+    worker->connectors[worker->max_connector_idx] = sock;
+    //printf("xxx worker->max_connector_idx: %d\n", worker->max_connector_idx);
 }
 
 void remove_connector_from_worker(Worker *worker, Sock *sock)
 {
-    if(sock->worker_idx < worker->max_client_idx)
+    if(sock->worker_idx < worker->max_connector_idx)
     {
-        Sock *tail = worker->clients[worker->max_client_idx];
+        Sock *tail = worker->connectors[worker->max_connector_idx];
         tail->worker_idx = sock->worker_idx;
-        worker->clients[tail->worker_idx] = tail;
-        worker->max_client_idx -= 1;
+        worker->connectors[tail->worker_idx] = tail;
+        worker->max_connector_idx -= 1;
     }
-    else if(sock->worker_idx == worker->max_client_idx)
+    else if(sock->worker_idx == worker->max_connector_idx)
     {
-        worker->max_client_idx -= 1;
+        worker->max_connector_idx -= 1;
     }
     
 }

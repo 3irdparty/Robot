@@ -17,7 +17,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdlib.h>
-
+#include <errno.h>
 
 #include "lua.h"
 #include "lualib.h"
@@ -46,7 +46,7 @@
 #define MAX_FD_NUM        (0xFFFF+100)   //最大fd值
 #define MAX_CONNECOTR_NUM        (0x0FFF)   //最大fd值
 #define MAX_CLIENT_NUM    0xFFFF    //最大连接数
-#define MAX_MSG_LEN       0xFF //最大消息长度
+#define MAX_MSG_LEN       0xFFFF //最大消息长度
 
 #define MAX_KING_NUM 20
 
@@ -58,6 +58,7 @@
 #define USEC_PER_SEC    (1000*1000)        //每秒毫秒数
 #define HEART_BEAT_TIME 5 //心跳间隔
 #define SOCK_TIME_OUT   15                 //连接超时时间
+#define CONNECT_TIME_OUT   5                 //连接超时时间
 #define SEND_SLEEP_US   5                  //重新发包间隔
 
 #define TICK_TIME 100 //定时器间隔，如果为100毫秒，则每秒至少tick10次

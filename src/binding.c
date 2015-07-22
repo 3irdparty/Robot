@@ -10,56 +10,106 @@ const char *xxtea_key = "jiangxuejun";
 static char msg_buf[MAX_LUA_MSG_LEN] = { 0 };
 
 int conn = 0;
-bool lua_on_connected(Worker *worker, Sock *sock)
+bool lua_on_connected(Worker *worker, Sock *sock, bool success)
 {
+	int functionIndex = -3;
 	//printf("------ lua_on_connected %d %d\n", sock->fd, ++conn);
 	lua_getglobal(worker->state, worker->conn_handler);
 	lua_pushinteger(worker->state, sock->fd);
-	bool ret = lua_pcall(worker->state, 1, 0, 0);
+	lua_pushboolean(worker->state, success);
+	int traceback = 0;
+    lua_getglobal(worker->state, worker->trace_handler); 
+    if (!lua_isfunction(worker->state, -1))
+    {
+        lua_pop(worker->state, 1);                                            /* L: ... func arg1 arg2 ... */
+    }
+    else
+    {
+        lua_insert(worker->state, functionIndex - 1);                         /* L: ... G func arg1 arg2 ... */
+        traceback = functionIndex - 1;
+    }
+
+	bool ret = lua_pcall(worker->state, 2, 0, traceback);
 	if(ret != 0)
 	{
 		Log();
-		printf("lua_pcall failed: %s\n", lua_tostring(worker->state,-1));
-		lua_pop(worker->state, 1);
+		printf("lua_pcall failed: %s\n", lua_tostring(worker->state, -1));
+		lua_pop(worker->state, 2);
+		lua_settop(worker->state, 0);
 		return false;
 	}
 
-	lua_pop(worker->state, 1);
+	lua_pop(worker->state, 2);
+	lua_settop(worker->state, 0);
 	return true;
 }
 
 bool lua_remove_sock(Worker *worker, Sock *sock)
 {
+	int functionIndex = -2;
 	lua_getglobal(worker->state, worker->rm_handler);
 	lua_pushinteger(worker->state, sock->fd);
-	bool ret = lua_pcall(worker->state, 1, 0, 0);
+	int traceback = 0;
+    lua_getglobal(worker->state, worker->trace_handler); 
+    if (!lua_isfunction(worker->state, -1))
+    {
+        lua_pop(worker->state, 1);                                            /* L: ... func arg1 arg2 ... */
+    }
+    else
+    {
+        lua_insert(worker->state, functionIndex - 1);                         /* L: ... G func arg1 arg2 ... */
+        traceback = functionIndex - 1;
+    }
+
+	bool ret = lua_pcall(worker->state, 1, 0, traceback);
 	if(ret != 0)
 	{
 		Log();
 		printf("lua_pcall failed: %s\n", lua_tostring(worker->state,-1));
-		lua_pop(worker->state, 1);
+		lua_pop(worker->state, 2);
+		lua_settop(worker->state, 0);
 		return false;
 	}
 
-	lua_pop(worker->state, 1);
+	lua_pop(worker->state, 2);
+	lua_settop(worker->state, 0);
 	return true;
 }
 
 bool lua_tick(Worker *worker)
 {
+	int functionIndex = -1;
 	lua_getglobal(worker->state, worker->tick_handler);
-	bool ret = lua_pcall(worker->state, 0, 0, 0);
+	int traceback = 0;
+    lua_getglobal(worker->state, worker->trace_handler); 
+    if (!lua_isfunction(worker->state, -1))
+    {
+        lua_pop(worker->state, 1);                                            /* L: ... func arg1 arg2 ... */
+    }
+    else
+    {
+        lua_insert(worker->state, functionIndex - 1);                         /* L: ... G func arg1 arg2 ... */
+        traceback = functionIndex - 1;
+    }
+
+	bool ret = lua_pcall(worker->state, 0, 0, traceback);
 	if(ret != 0)
 	{
 		Log();
 		printf("lua_pcall failed: %s\n", lua_tostring(worker->state,-1));
+		lua_pop(worker->state, 2);
+		lua_settop(worker->state, 0);
 		return false;
 	}
+
+	lua_pop(worker->state, 2);
+	lua_settop(worker->state, 0);
 	return true;
 }
 
 bool lua_msg_handler(lua_State *state, SockMsg* msg)
 {
+	int functionIndex = -3;
 	Worker *worker = &g_workers[msg->sock->epoll_idx];
 	lua_getglobal(worker->state, worker->msg_handler);
 	lua_pushinteger(state, (int)msg->sock->fd);
@@ -75,17 +125,31 @@ bool lua_msg_handler(lua_State *state, SockMsg* msg)
 	//printf("lua_msg_handler: %d %s\n", MSG_MSG(msg), MSG_LEN(msg));
 	lua_pushlstring(state, MSG_MSG(msg), MSG_LEN(msg));
 #endif
-	bool ret = lua_pcall(state, 2, 1, 0);
+	int traceback = 0;
+    lua_getglobal(worker->state, worker->trace_handler); 
+    if (!lua_isfunction(worker->state, -1))
+    {
+        lua_pop(worker->state, 1);                                            /* L: ... func arg1 arg2 ... */
+    }
+    else
+    {
+        lua_insert(worker->state, functionIndex - 1);                         /* L: ... G func arg1 arg2 ... */
+        traceback = functionIndex - 1;
+    }
+
+	bool ret = lua_pcall(worker->state, 2, 0, traceback);
 	if(ret != 0)
 	{
 		Log();
-		printf("lua_pcall failed: %s\n", lua_tostring(state,-1));
-		lua_pop(state, 1);
+		printf("lua_pcall failed: %s\n", lua_tostring(worker->state, -1));
+		lua_pop(worker->state, 2);
+		lua_settop(worker->state, 0);
 		return false;
 	}
-	ret = lua_toboolean(state,-1);
+	ret = lua_toboolean(state, -1);
 
-	lua_pop(state, 1);
+	lua_pop(worker->state, 3);
+	lua_settop(worker->state, 0);
 
     return ret;
 }
@@ -130,6 +194,7 @@ static int lua_connect(lua_State* state)
 }
 #endif
 
+#if 0
 static int lua_connect_to(lua_State* state)
 {
 	int workerIdx = 0;
@@ -190,6 +255,65 @@ static int lua_connect_to(lua_State* state)
     	lua_pushinteger(state, -1);
     }
 
+    
+    //lua_pop(state, 1);
+
+    return 1;
+}
+#endif
+
+static int lua_connect_to(lua_State* state)
+{
+	int workerIdx = 0;
+	while(state != g_workers[workerIdx].state)
+	{
+		workerIdx++;
+	}
+
+	const char *ip = lua_tostring(state, 1);
+	unsigned short port = lua_tointeger(state, 2);
+	
+	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in addr;
+    
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+
+    struct hostent *host;
+	if(host = gethostbyname(ip))
+	{
+        memcpy(&addr.sin_addr, host->h_addr_list[0], host->h_length);
+	}
+    else
+	{
+		addr.sin_addr.s_addr = inet_addr(ip);
+	}
+
+    //addr.sin_addr.s_addr = inet_addr(host);
+    addr.sin_port = htons(port);
+
+	
+    Sock *sock = create_sock(sockfd, g_epollfds[workerIdx], workerIdx);
+    g_sock_fd_map[sockfd] = sock;
+    
+    int flags = fcntl(sockfd, F_GETFL, 0);
+	fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+
+    if(connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
+    {
+    }
+    else
+    {
+    }
+    
+    heart_beat_sock(sock, time(0));
+
+    lua_pushinteger(state, sockfd);
+    //printf("workerIdx: %d \n", workerIdx);
+    add_connector_to_worker(&g_workers[workerIdx], sock);
     
     //lua_pop(state, 1);
 
