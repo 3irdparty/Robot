@@ -1,11 +1,8 @@
 gSockFdMap = {}
 
-local connectCB = {}
-
 function sendMsg(sock, msgstr)
 	uu.createMsg(sock, msgstr)
 	uu.sendMsg(sock)
-	log("net", "sendMsg ", sock, string.len(msgstr))
 end
 
 local msgRecvCount = 0
@@ -15,34 +12,38 @@ function onMsg(sock, msgstr)
 	
 	local out = string.format("\n  -- onMsg sock: %d msgCount: %d: ", sock, msgRecvCount)
 	for k, v in pairs(msg) do
-		if type(v) ~= "table" then
-			out = out .. "\n     " .. k .. " = " .. v
-		end
+		out = out .. "\n     " .. k .. " = " .. v
 	end
-	--out = out .. table.concat(msg)
 	log("net", out)
-
 	return true
 end
+
+
 
 function onRemoveSock(sock)
 	log("net", " lua onRemoveSock: ", sock)
 	gSockFdMap[sock] = nil
 end
 
-
-function onConnected(sock, success)
-	--log("net", " lua onConnected: ", sock, success)
+local n = 0
+function onConnected(sock)
+	log("net", " lua onConnected: ", sock)
 	gSockFdMap[sock] = sock
-	if connectCB[sock] then
-		connectCB[sock](sock, success)
-	end
-end
+	n = n + 1
+	if n < G_CLIENT_NUM then
+		--print("sock: ", uu.connectTo(G_SERVER_IP, G_SERVER_PORT))
+	else
 
-function connectTo(ip, port, cb)
-	local sock = uu.connectTo(ip, port)
-	if sock > 0 then
-		connectCB[sock] = cb
-		return sock
 	end
+	--[[
+	local msg = 
+	{
+		msgMainId   = 3,
+    	msgMinorId  = 1,
+    	strAccount  = "finger",
+    	strPassword = "123456",
+	}
+	local str = mp.pack(msg)
+    sendMsg(sock, str)
+	--]]
 end

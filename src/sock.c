@@ -60,15 +60,14 @@ inline void remove_sock(Sock *sock)
 
 inline SockMsg *create_recv_msg(Sock *sock)
 {
-	int len = *(int*)&(sock->head);
-	//printf("len: %d / %d\n", len, MAX_MSG_LEN);
+	int len = *(int*)&sock->head;
 	if(len < 0 || len > MAX_MSG_LEN)
 	{
-		Log();
 		return 0;
 	}
 	int len_total = sizeof(SockMsg) + len + PACK_HEAD_LEN;
 	SockMsg *msg = (SockMsg*)Malloc(len_total);
+
 	memset(msg, 0, len_total);
 	msg->sock = sock;
 	*(int*)msg->data = *(int*)sock->head;
@@ -148,11 +147,10 @@ inline void push_lua_msg(Sock *sock, LuaMsg *msg)
 
 	struct epoll_event event;
     event.data.fd = sock->fd;
-    event.events = EPOLLOUT | EPOLLONESHOT;
+    event.events = EPOLLIN | EPOLLOUT | EPOLLONESHOT;
     //event.events = EPOLLOUT | EPOLLONESHOT;
-    //epoll_ctl(sock->epoll_fd, EPOLL_CTL_DEL, sock->fd, 0);
-    //epoll_ctl(sock->epoll_fd, EPOLL_CTL_ADD, sock->fd, &event);
-    epoll_ctl(sock->epoll_fd, EPOLL_CTL_MOD, sock->fd, &event);
+    epoll_ctl(sock->epoll_fd, EPOLL_CTL_DEL, sock->fd, 0);
+    epoll_ctl(sock->epoll_fd, EPOLL_CTL_ADD, sock->fd, &event);
 }
 
 inline void msg_retain(SockMsg *msg)
