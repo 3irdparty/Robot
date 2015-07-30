@@ -1,0 +1,17 @@
+依赖：
+	lua，zlib
+
+运行环境：
+	linux
+
+编译、启动：
+	chmod 0777 auto.sh
+	./auto.sh
+
+配置：
+	script/config.lua 中配置ip和port：
+		G_SERVER_IP = "172.17.109.61" 
+		G_SERVER_PORT = 8888
+
+	机器人数量：
+		G_CLIENT_NUM = 1
