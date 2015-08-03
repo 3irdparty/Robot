@@ -1,8 +1,13 @@
 #include "commen.h"
 #include "binding.h"
 #include "sock.h"
+#include "worker.h"
 #include <zlib.h> 
 #include "xxtea.h"
+
+#if __cplusplus 
+extern "C"{
+#endif
 
 const char *xxtea_key = "jiangxuejun";
 
@@ -419,3 +424,7 @@ void close_lua(lua_State *state)
 {
 	lua_close(state);
 }
+
+#if __cplusplus
+}
+#endif

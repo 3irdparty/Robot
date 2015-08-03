@@ -19,10 +19,20 @@
 #include <stdlib.h>
 #include <errno.h>
 
+
+
+
+#if __cplusplus 
+extern "C"{
+#endif
+
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
 
+#if __cplusplus 
+}
+#endif
 
 
 //
@@ -67,5 +77,9 @@ extern const char *LOG_TAG;
 #define Log(xx)     printf("%s %s %d\n", __FILE__, __FUNCTION__, __LINE__)
 
 #define ENABLE_XXTEA_ZLIB 1
+
+
+
+
 
 #endif // _commen_h_

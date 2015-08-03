@@ -5,6 +5,10 @@
 #include "sock.h"
 //#include "timer.h"
 
+#if __cplusplus 
+extern "C"{
+#endif
+
 typedef struct
 {
 	int sockfd;
@@ -46,6 +50,10 @@ void add_client_to_worker(Worker *worker, Sock *sock);
 
 void remove_client_from_worker(Worker *worker, Sock *sock);
 
+void add_connector_to_worker(Worker *worker, Sock *sock);
+
+void remove_connector_from_worker(Worker *worker, Sock *sock);
+
 void start_workers();
 
 void wait_workers();
@@ -54,7 +62,7 @@ void stop_workers();
 
 extern int EPOLL_NUM;
 extern int ROBOT_NUM;
-int g_epollfds[MAX_EPOLL_NUM];
+extern int g_epollfds[MAX_EPOLL_NUM];
 extern Worker g_workers[MAX_EPOLL_NUM];
 
 extern const char *g_self_ip;
@@ -68,6 +76,10 @@ extern unsigned short g_wormhole_port;
 
 extern const char *g_redis_ip;
 extern unsigned short g_redis_port;
+
+#if __cplusplus
+}
+#endif
 
 
 #endif // _worker_h_

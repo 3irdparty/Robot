@@ -1,5 +1,5 @@
 all:
-	gcc ./src/*.c -o ./bin/robot -std=c99 -lpthread -I./include -I./src -llua -lz -g
+	g++ ./src/*.c -o ./bin/robot -lpthread -I./include -I./src -llua -lz -g
 	cp ./script/* ./bin/ -r
 
 clean:

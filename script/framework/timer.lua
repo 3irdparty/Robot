@@ -1,4 +1,6 @@
 local ostime = os.time
+local osclock = os.clock
+
 
 local timers = {}
 
@@ -48,6 +50,7 @@ function timerTick()
 				--log("timer", name, " run times: ", timer.calledtimes)
 			end
 		end
+		--log("timer", currtime, timer.start, timer.delay, timer.internal)
 		
 	end
 	--print("[lua_print] timerTick 222")

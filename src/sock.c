@@ -1,6 +1,10 @@
 #include <sys/epoll.h>
 #include "sock.h"
 
+#if __cplusplus 
+extern "C"{
+#endif
+
 Sock *g_sock_fd_map[MAX_FD_NUM] = {0};
 
 
@@ -11,7 +15,7 @@ inline void heart_beat_sock(Sock *sock, time_t curr_time)
 }
 
 int sock_num = 0;
-inline Sock *create_sock(int fd, int epoll_fd, int epoll_idx)
+Sock *create_sock(int fd, int epoll_fd, int epoll_idx)
 {
 	Sock *sock = (Sock*)Malloc(sizeof(Sock));
 	memset(sock, 0, sizeof(Sock));
@@ -31,14 +35,14 @@ inline Sock *create_sock(int fd, int epoll_fd, int epoll_idx)
 	return sock;
 }
 
-static inline void free_sock(void *data)
+static void free_sock(void *data)
 {
 	Sock *sock = (Sock*)data;
 	
 	Free(sock);
 }
 
-inline void remove_sock(Sock *sock)
+void remove_sock(Sock *sock)
 {
 	g_sock_fd_map[sock->fd] = 0;
 	if(sock->luamsg)
@@ -58,7 +62,7 @@ inline void remove_sock(Sock *sock)
 	//printf("[remove_sock] sock_num: %d\n", sock_num);
 }
 
-inline SockMsg *create_recv_msg(Sock *sock)
+SockMsg *create_recv_msg(Sock *sock)
 {
 	int len = *(int*)&(sock->head);
 	//printf("len: %d / %d\n", len, MAX_MSG_LEN);
@@ -97,7 +101,7 @@ inline SockMsg *create_recv_msg(Sock *sock)
 }
 */
 
-inline LuaMsg *create_lua_msg(char *str, uint16_t len)
+LuaMsg *create_lua_msg(char *str, uint16_t len)
 {
 	//printf("000 str: %p len: %d\n", str, len);
 	LuaMsg *luamsg = (LuaMsg*)Malloc(sizeof(LuaMsg) + PACK_HEAD_LEN + len);
@@ -130,7 +134,7 @@ inline LuaMsg *create_lua_msg(int8_t cmd, int8_t action, char *str, uint16_t len
 }
 */
 
-inline void push_lua_msg(Sock *sock, LuaMsg *msg)
+void push_lua_msg(Sock *sock, LuaMsg *msg)
 {
 	if(!sock->luamsg)
 	{
@@ -158,12 +162,12 @@ inline void push_lua_msg(Sock *sock, LuaMsg *msg)
     epoll_ctl(sock->epoll_fd, EPOLL_CTL_MOD, sock->fd, &event);
 }
 
-inline void msg_retain(SockMsg *msg)
+void msg_retain(SockMsg *msg)
 {
 	msg->count++;
 }
 
-inline void msg_release(SockMsg *msg)
+void msg_release(SockMsg *msg)
 {
 	msg->count--;
 	//printf("[msg_release] 111 %d\n", msg->count);
@@ -176,13 +180,13 @@ inline void msg_release(SockMsg *msg)
 	//printf("[msg_release] 333 %d\n", msg->count);
 }
 
-inline void lua_msg_retain(LuaMsg *msg)
+void lua_msg_retain(LuaMsg *msg)
 {
 	msg->count++;
 	//printf("[lua msg retain] %d\n", msg->count);
 }
 
-inline void lua_msg_release(LuaMsg *msg)
+void lua_msg_release(LuaMsg *msg)
 {
 	msg->count--;
 	//printf("[lua_msg_release] 111 %d\n", msg->count);
@@ -194,3 +198,7 @@ inline void lua_msg_release(LuaMsg *msg)
 	}
 	//printf("[lua_msg_release] 333 %d\n", msg->count);
 }
+
+#if __cplusplus
+}
+#endif

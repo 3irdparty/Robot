@@ -8,7 +8,7 @@ function sendMsg(sock, data)
 	local msgstr = mp.pack(data)
 	uu.createMsg(sock, msgstr)
 	uu.sendMsg(sock)
-	--log("net", "sendMsg ", sock, string.len(msgstr))
+	log("net", "sendMsg ", sock, string.len(msgstr))
 end
 
 function onMsg(sock, msgstr)

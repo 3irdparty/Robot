@@ -14,6 +14,10 @@
 #define REGIST_TIMEOUT 3      //认证超时时间
 #define HEARTBEAT_TIMEOUT 30  //心跳超时时间
 
+#if __cplusplus 
+extern "C"{
+#endif
+
 typedef struct SockMsg SockMsg;
 
 typedef struct LuaMsg
@@ -116,5 +120,12 @@ extern void lua_msg_retain(LuaMsg *msg);
 extern void lua_msg_release(LuaMsg *msg);
 
 extern Sock *g_sock_fd_map[MAX_FD_NUM];
+
+
+#if __cplusplus
+}
+#endif
+
+
 
 #endif // _sock_h_

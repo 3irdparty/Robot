@@ -3,6 +3,11 @@
 //#include "handler.h"
 //#include "listener.h"
 #include "binding.h"
+#include "sock.h"
+
+#if __cplusplus 
+extern "C"{
+#endif
 
 int EPOLL_NUM = 1;
 int ROBOT_NUM = 1;
@@ -69,29 +74,26 @@ static bool write_data(Sock *sock)
             }
             else
             {
-
                 ret = true;
-            
                 break;
             }
         }
         else if((nwrite < 0) && (errno == EAGAIN || errno == EINTR || errno == EWOULDBLOCK))
         {
-
-            //printf("[write_data] 222 nwrite: %d\n", nwrite);
             ret = true;
             
             break;
         }
         else
         {
-            //printf("[write_data] 333 nwrite: %d\n", nwrite);
-            //goto Error;
+            ret = false;
+            
+            break;
         }    
     }
-
+    sock->luamsg = luamsg;
     //printf("[write_data] nwrite: %d\n", nwrite);
-    sock->luamsg = 0;
+    //sock->luamsg = 0;
 //Error:
     return ret;
 }
@@ -337,7 +339,7 @@ static void *worker_thread(void *arg) {
 
     while (worker->running)
     {
-        int n = epoll_wait(epfd, &events, MAX_EVENTS, TICK_TIME);
+        int n = epoll_wait(epfd, events, MAX_EVENTS, TICK_TIME);
         
         for(int i = 0; i < n; i++)
         {
@@ -502,3 +504,7 @@ void stop_workers()
         g_workers[i].running = false;
     }
 }
+
+#if __cplusplus
+}
+#endif
